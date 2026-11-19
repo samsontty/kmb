@@ -99,6 +99,8 @@
         const [stopName, stopId, routeName, routeId] = parts;
         const cleanRoute = routeName.split('(')[0].trim();
         const cleanStop = stopName.split('(')[0].trim();
+        const cleanStopId = stopId.replace(/[^A-Za-z0-9]/g, '');
+        const cleanRouteId = routeId.replace(/[^A-Za-z0-9]/g, '');
 
         const card = document.createElement('div');
         card.className = 'card';
@@ -108,9 +110,9 @@
         `;
         resultDiv.appendChild(card);
 
-        const apiUrl = `https://etabus.gov.hk{stopId.trim()}/${routeId.trim()}/1`;
+        const apiUrl = `https://etabus.gov.hk{cleanStopId}/${cleanRouteId}/1`;
 
-        fetch(apiUrl, { cache: 'no-store' })
+        fetch(apiUrl)
           .then(res => {
             if (!res.ok) throw new Error('HTTP ' + res.status);
             return res.json();
