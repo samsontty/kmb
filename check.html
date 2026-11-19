@@ -1,93 +1,140 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
-  <title>Hong Kong Bus ETA Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>巴士到站</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f0f2f5;
-      padding: 20px;
-    }
-    h1 {
-      color: #333;
-    }
-    .stop-section {
-      background: #fff;
-      border-left: 5px solid #007ACC;
-      margin: 20px 0;
-      padding: 15px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    h3 {
-      margin-top: 0;
-    }
-    ul {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f7;
+      color: #1d1d1f;
       margin: 0;
-      padding-left: 20px;
+      padding: 12px;
+      font-size: 15px;
     }
-    li {
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: #666;
+    }
+    button {
+      background: #007AFF;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      border-left: 4px solid #e60012;
+    }
+    .title {
+      font-weight: 700;
+      font-size: 16px;
       margin-bottom: 6px;
+    }
+    .stop {
+      font-weight: 400;
+      font-size: 13px;
+      color: #555;
+    }
+    .eta-list {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .eta-item {
+      background: #f0f2f5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .eta-item strong {
+      color: #007AFF;
+    }
+    .empty {
+      color: #888;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <div id="result">Loading bus data...</div>
+  <div class="header">
+    <span id="update-time">載入中...</span>
+    <button onclick="loadAll()">重新整理</button>
+  </div>
+  <div id="result"></div>
 
   <script>
-    const resultDiv = document.getElementById('result');
-    const query = new URLSearchParams(window.location.search).get('query');
+    function loadAll() {
+      const resultDiv = document.getElementById('result');
+      const timeSpan = document.getElementById('update-time');
+      const query = new URLSearchParams(window.location.search).get('query');
 
-    if (!query) {
-      resultDiv.textContent = "Missing query. Use format: StopName|StopID|RouteName|RouteID;...";
-    } else {
+      if (!query) {
+        timeSpan.textContent = '';
+        resultDiv.innerHTML = '<div class="card empty">缺少 query 參數</div>';
+        return;
+      }
+
+      const now = new Date();
+      timeSpan.textContent = '更新時間：' + now.toTimeString().substring(0, 5);
       resultDiv.innerHTML = '';
-      const entries = query.split(';');
+
+      const entries = query.split(';').filter(e => e.trim() !== '');
 
       entries.forEach(entry => {
         const parts = entry.split('|');
         if (parts.length < 4) return;
 
         const [stopName, stopId, routeName, routeId] = parts;
-        const apiUrl = `https://data.etabus.gov.hk/v1/transport/kmb/eta/${stopId}/${routeId}/1`;
+        const cleanRoute = routeName.split('(')[0].trim();
+        const cleanStop = stopName.split('(')[0].trim();
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="title">${cleanRoute} <span class="stop">(${cleanStop})</span></div>
+          <div class="eta-list"><span class="empty">讀取中...</span></div>
+        `;
+        resultDiv.appendChild(card);
+
+        const apiUrl = `https://etabus.gov.hk{stopId.trim()}/${routeId.trim()}/1`;
 
         fetch(apiUrl)
           .then(res => res.json())
           .then(data => {
-            const section = document.createElement('div');
-            section.className = 'stop-section';
-            section.innerHTML = `<h3>${routeName} → ${stopName}</h3>`;
+            const listDiv = card.querySelector('.eta-list');
+            const validEtas = (data.data || []).filter(item => item.eta).slice(0, 3);
 
-            if (data.data && data.data.length > 0) {
-              const ul = document.createElement('ul');
-              data.data.forEach(entry => {
-                const li = document.createElement('li');
-                if (entry.eta) {
-                  const etaTime = new Date(entry.eta);
-                  const now = new Date();
-                  const diffMin = Math.max(0, Math.round((etaTime - now) / 60000));
-                  const formatted = etaTime.toLocaleTimeString();
-                  li.textContent = `ETA: ${formatted} (${diffMin} min${diffMin !== 1 ? 's' : ''} left)`;
-                } else {
-                  li.textContent = 'ETA: Not available';
-                }
-                ul.appendChild(li);
-              });
-              section.appendChild(ul);
-            } else {
-              section.innerHTML += `<p>No ETA data available.</p>`;
+            if (validEtas.length === 0) {
+              listDiv.innerHTML = '<span class="empty">暫無班次資料</span>';
+              return;
             }
 
-            resultDiv.appendChild(section);
+            listDiv.innerHTML = validEtas.map(item => {
+              const etaTime = new Date(item.eta);
+              const diffMin = Math.max(0, Math.round((etaTime - new Date()) / 60000));
+              const hhmm = etaTime.toTimeString().substring(0, 5);
+              return `<div class="eta-item">${hhmm} <strong>(${diffMin}分)</strong></div>`;
+            }).join('');
           })
-          .catch(err => {
-            const section = document.createElement('div');
-            section.className = 'stop-section';
-            section.innerHTML = `<h3>${routeName} → ${stopName}</h3><p>Error fetching ETA: ${err.message}</p>`;
-            resultDiv.appendChild(section);
+          .catch(() => {
+            card.querySelector('.eta-list').innerHTML = '<span class="empty">讀取失敗</span>';
           });
       });
     }
+
+    loadAll();
   </script>
 </body>
 </html>
