@@ -110,8 +110,11 @@
 
         const apiUrl = `https://etabus.gov.hk{stopId.trim()}/${routeId.trim()}/1`;
 
-        fetch(apiUrl)
-          .then(res => res.json())
+        fetch(apiUrl, { cache: 'no-store' })
+          .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
           .then(data => {
             const listDiv = card.querySelector('.eta-list');
             const validEtas = (data.data || []).filter(item => item.eta).slice(0, 3);
@@ -128,8 +131,8 @@
               return `<div class="eta-item">${hhmm} <strong>(${diffMin}分)</strong></div>`;
             }).join('');
           })
-          .catch(() => {
-            card.querySelector('.eta-list').innerHTML = '<span class="empty">讀取失敗</span>';
+          .catch(err => {
+            card.querySelector('.eta-list').innerHTML = `<span class="empty">讀取失敗 (${err.message})</span>`;
           });
       });
     }
