@@ -1,39 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Hong Kong Bus ETA Viewer</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f2f5;
-      padding: 20px;
-    }
-    h1 {
-      color: #333;
-    }
-    .stop-section {
-      background: #fff;
-      border-left: 5px solid #007ACC;
-      margin: 20px 0;
-      padding: 15px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    h3 {
-      margin-top: 0;
-    }
-    ul {
-      margin: 0;
-      padding-left: 20px;
-    }
-    li {
-      margin-bottom: 6px;
-    }
-  </style>
-</head>
-<body>
-  <div id="result">Loading bus data...</div>
-
   <script>
     const resultDiv = document.getElementById('result');
     const query = new URLSearchParams(window.location.search).get('query');
@@ -89,5 +53,3 @@
       });
     }
   </script>
-</body>
-</html>
